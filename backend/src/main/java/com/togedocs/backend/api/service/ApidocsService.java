@@ -15,10 +15,7 @@ public class ApidocsService {
     private final ApidocsRepository apidocsRepository;
 
     public void addRow(Long projectId) {
-        boolean result = apidocsRepository.addRow(projectId);
-        if (!result) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
+        apidocsRepository.addRow(projectId);
     }
 
     public void addCol(Long projectId, ApidocsRequest.AddColRequest request) {

@@ -3,14 +3,12 @@ package com.togedocs.backend.domain.repository;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.togedocs.backend.api.dto.ApidocsRequest;
-import com.togedocs.backend.api.dto.ApidocsResponse;
 import com.togedocs.backend.api.dto.ProjectRequest;
 import com.togedocs.backend.common.exception.BusinessException;
 import com.togedocs.backend.common.exception.ErrorCode;
 import com.togedocs.backend.domain.entity.Apidocs;
 import com.togedocs.backend.domain.entity.ColCategory;
 import com.togedocs.backend.domain.entity.ColDto;
-import com.togedocs.backend.domain.entity.Project;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -19,7 +17,10 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
@@ -31,6 +32,7 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
     private final String ROWS = "rows";
     private final String COLS = "cols";
     private final String DATA = "data";
+    private final String DEFAULT_TYPE = "text";
     private final int DEFAULT_WIDTH = 100;
     private final ColCategory DEFAULT_CATEGORY = ColCategory.ADDED;
 
@@ -42,34 +44,27 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
     @Override
     public void createApidocs(ProjectRequest.CreateProjectRequest request, Long projectId) {
         List<ColDto> cols = new ArrayList<>();
-        cols.add(new ColDto("one", "Name", "text", DEFAULT_WIDTH, ColCategory.REQUIRED));
-        cols.add(new ColDto("two", "Method", "text", DEFAULT_WIDTH, ColCategory.REQUIRED));
-        cols.add(new ColDto("three", "URL", "text", DEFAULT_WIDTH, ColCategory.REQUIRED));
-        cols.add(new ColDto("d-one", "Query Params", "text", 1, ColCategory.PAYLOAD));
-        cols.add(new ColDto("d-two", "Request Body", "text", 1, ColCategory.PAYLOAD));
-        cols.add(new ColDto("d-three", "Response Body", "text", 1, ColCategory.PAYLOAD));
+        cols.add(new ColDto("one", "Name", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
+        cols.add(new ColDto("two", "Method", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
+        cols.add(new ColDto("three", "URL", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
+        cols.add(new ColDto("d-one", "Query Params", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
+        cols.add(new ColDto("d-two", "Request Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
+        cols.add(new ColDto("d-three", "Response Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
 
-        Apidocs apidocs = Apidocs.builder()
-                .projectId(projectId)
-                .title(request.getTitle())
-                .desc(request.getDesc())
-                .rows(new ArrayList<String>())
-                .cols(cols)
-                .data(new HashMap<String, Map<String, String>>())
-                .build();
+        Apidocs apidocs = Apidocs.builder().projectId(projectId).title(request.getTitle()).desc(request.getDesc()).rows(new ArrayList<>()).cols(cols).data(new HashMap<>()).build();
 
         mongoTemplate.insert(apidocs, APIDOCS);
     }
 
     @Override
-    public void deleteApidocs(Long projectId){
+    public void deleteApidocs(Long projectId) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
-        mongoTemplate.remove(query, APIDOCS);
+        DeleteResult deleteResult = mongoTemplate.remove(query, APIDOCS);
+        deleteResult.getDeletedCount() == 0
     }
 
     @Override
-    public boolean addRow(Long projectId) {
-
+    public void addRow(Long projectId) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Update update = new Update();
         String rowId = UUID.randomUUID().toString();
@@ -77,13 +72,12 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.set(DATA + "." + rowId, new Document());
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        return updateResult.getMatchedCount() != 0;
+        if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
     }
 
 
     @Override
-    public boolean addCol(Long projectId, ApidocsRequest.AddColRequest request) {
-
+    public void addCol(Long projectId, ApidocsRequest.AddColRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Update update = new Update();
         String colId = UUID.randomUUID().toString();
@@ -91,7 +85,7 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.push(COLS).atPosition(-3).value(col);
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        return updateResult.getMatchedCount() != 0;
+        if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
     }
 
     @Override
@@ -148,6 +142,8 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.unset(DATA + "." + rowId);
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
+        mongoTemplate.rem
+
         if (updateResult.getModifiedCount() == 0) return false;
         return true;
     }
@@ -155,14 +151,24 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
     @Override
     public boolean deleteCol(Long projectId, String colId) {
 
+//        if(colId.equals("one")||colId.equals("two"))
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
+        // TODO: field로 가져와서 하는 걸로 다시 짜보자
+        query.fields().include(ROWS).include(COLS);
+        Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class, APIDOCS);
+        List<String> rows = apidocs.getRows();
+        List<ColDto> cols = apidocs.getCols();
+        if (projectId == 54) return false;
+
+
         Update update = new Update();
         // #1. cols에서 uuid가 colId인 colDto 제거
         update.pull(COLS, Query.query(Criteria.where("uuid").is(colId)));
         // rows 배열 조회
-        List<String> rows = mongoTemplate.findDistinct(query, ROWS, APIDOCS, String.class);
+//        List<String> rows = mongoTemplate.findDistinct(query, ROWS, APIDOCS, String.class);
         for (String rowId : rows) {
             // #2. rows 배열의 rowId를 순회하며 colId쌍 제거
+            // TODO: updateMulti를 쓰면 될까??
             update.unset(DATA + "." + rowId + "." + colId);
         }
         // #1, #2 실행

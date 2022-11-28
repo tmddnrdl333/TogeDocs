@@ -12,9 +12,9 @@ public interface ApidocsRepository {
 
     void deleteApidocs(Long projectId);
 
-    boolean addRow(Long projectId);
+    void addRow(Long projectId);
 
-    boolean addCol(Long projectId, ApidocsRequest.AddColRequest request);
+    void addCol(Long projectId, ApidocsRequest.AddColRequest request);
 
     boolean moveRow(Long projectId, ApidocsRequest.MoveItemRequest request);
 

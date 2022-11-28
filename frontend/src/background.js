@@ -3,7 +3,6 @@ import jwt_decode from "jwt-decode";
 import { app, protocol, BrowserWindow } from "electron";
 import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 import installExtension, { VUEJS3_DEVTOOLS } from "electron-devtools-installer";
-// import { access } from "original-fs";
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 let win;
@@ -101,7 +100,7 @@ app.on("ready", async () => {
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {
   if (process.platform === "win32") {
-    process.on("message", data => {
+    process.on("message", (data) => {
       if (data === "graceful-exit") {
         app.quit();
       }
@@ -130,14 +129,14 @@ app.on("will-finish-launching", function () {
 });
 
 // Deep linked url
-let deeplinkingUrl;
-let info;
-let info2;
-let accesstoken;
-let accesstoken2;
-let refreshtoken;
-let userInfo;
-let exp;
+let deeplinkingUrl,
+  info,
+  info2,
+  accesstoken,
+  accesstoken2,
+  refreshtoken,
+  userInfo,
+  exp;
 const gotTheLock = app.requestSingleInstanceLock();
 if (gotTheLock) {
   app.on("second-instance", (e, argv) => {
@@ -159,10 +158,6 @@ function asyncTest(argv) {
     refreshtoken = accesstoken2[1].substring(0, accesstoken2[1].length - 1);
     userInfo = jwt_decode(accesstoken);
     exp = userInfo.exp;
-    win.webContents.executeJavaScript(`console.log(window.location.href)`);
-    // logEverywhere("accesstoken: " + accesstoken);
-    // logEverywhere("refreshtoken: " + refreshtoken);
-    // logEverywhere("refreshtoken: " + exp);
     win.webContents.executeJavaScript(
       `window.localStorage.setItem('accessToken','${accesstoken}')`
     );
@@ -176,10 +171,8 @@ function asyncTest(argv) {
       `window.dispatchEvent(new CustomEvent('login-successful'))`
     );
   }
-  // logEverywhere('app.makeSingleInstance# '+accesstoken[2])
 
   if (win) {
-    // window.localStorage.setItem("accessToken",store.get("accessToken"))
     if (win.isMinimized()) win.restore();
     win.focus();
   }
