@@ -13,6 +13,14 @@ import org.springframework.stereotype.Service;
 public class ApilogsService {
     private final ApilogsRepository apilogsRepository;
 
+    public void createApilogs(Long projectId) {
+        apilogsRepository.createApilogs(projectId);
+    }
+
+    public void deleteApilogs(Long projectId) {
+        apilogsRepository.deleteApilogs(projectId);
+    }
+
     public ApilogsResponse.Logs getLogs(Long projectId, String rowId) {
         if (!apilogsRepository.existsByProjectId(projectId)) {
             throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);

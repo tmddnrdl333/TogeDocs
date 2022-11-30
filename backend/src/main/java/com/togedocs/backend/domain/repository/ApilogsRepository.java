@@ -4,12 +4,13 @@ import com.togedocs.backend.api.dto.ApilogsRequest;
 import com.togedocs.backend.domain.entity.LogDto;
 
 import java.util.List;
-import com.togedocs.backend.domain.entity.Project;
 
 public interface ApilogsRepository {
 
-    void createApilogs(Project project);
+    void createApilogs(Long projectId);
+
     void deleteApilogs(Long projectId);
+
     boolean existsByProjectId(Long projectId);
 
     List<LogDto> getLogs(Long projectId, String rowId);

@@ -3,13 +3,11 @@ package com.togedocs.backend.api.controller;
 import com.togedocs.backend.api.dto.ProjectRequest;
 import com.togedocs.backend.api.dto.ProjectResponse;
 import com.togedocs.backend.api.service.ProjectService;
-import com.togedocs.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.transaction.Transactional;
 import java.security.Principal;
 
 @RestController
@@ -22,6 +20,7 @@ public class ProjectController {
     public ResponseEntity<String> createProject(@RequestBody ProjectRequest.CreateProjectRequest request, Principal principal) {
         String providerId = principal.getName();
         projectService.createProject(request, providerId);
+
         return ResponseEntity.status(HttpStatus.CREATED).body("성공적으로 프로젝트를 생성했습니다!");
     }
 

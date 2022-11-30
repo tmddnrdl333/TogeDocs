@@ -1,14 +1,12 @@
 package com.togedocs.backend.domain.repository;
 
-import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.togedocs.backend.api.dto.ApilogsRequest;
-import com.togedocs.backend.api.dto.ApilogsResponse;
 import com.togedocs.backend.domain.entity.Apilogs;
 import com.togedocs.backend.domain.entity.LogDto;
-import com.togedocs.backend.domain.entity.Project;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.BasicQuery;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -27,15 +25,14 @@ public class ApilogsRepositoryImpl implements ApilogsRepository {
     private final String PROJECT_ID = "projectId";
 
     @Override
-    public void createApilogs(Project project) {
-        Apilogs apilogs = Apilogs.builder().projectId(project.getId()).log(new HashMap<String, List<LogDto>>()).build();
+    public void createApilogs(Long projectId) {
+        Apilogs apilogs = Apilogs.builder().projectId(projectId).log(new HashMap<>()).build();
         mongoTemplate.insert(apilogs, APILOGS);
     }
 
     @Override
     public void deleteApilogs(Long projectId) {
-        Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
-        mongoTemplate.remove(query, APILOGS);
+        mongoTemplate.remove(BasicQuery.query(Criteria.where(PROJECT_ID).is(projectId)), APILOGS);
     }
 
     public boolean existsByProjectId(Long projectId) {

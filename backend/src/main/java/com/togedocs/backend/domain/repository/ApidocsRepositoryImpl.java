@@ -3,7 +3,6 @@ package com.togedocs.backend.domain.repository;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.togedocs.backend.api.dto.ApidocsRequest;
-import com.togedocs.backend.api.dto.ProjectRequest;
 import com.togedocs.backend.common.exception.BusinessException;
 import com.togedocs.backend.common.exception.ErrorCode;
 import com.togedocs.backend.domain.entity.Apidocs;
@@ -12,13 +11,12 @@ import com.togedocs.backend.domain.entity.ColDto;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.BasicQuery;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,35 +30,22 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
     private final String ROWS = "rows";
     private final String COLS = "cols";
     private final String DATA = "data";
-    private final String DEFAULT_TYPE = "text";
     private final int DEFAULT_WIDTH = 100;
     private final ColCategory DEFAULT_CATEGORY = ColCategory.ADDED;
 
     public boolean existsByProjectId(Long projectId) {
-        Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
-        return mongoTemplate.exists(query, APIDOCS);
+        return mongoTemplate.exists(BasicQuery.query(Criteria.where(PROJECT_ID).is(projectId)), APIDOCS);
     }
 
     @Override
-    public void createApidocs(ProjectRequest.CreateProjectRequest request, Long projectId) {
-        List<ColDto> cols = new ArrayList<>();
-        cols.add(new ColDto("one", "Name", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
-        cols.add(new ColDto("two", "Method", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
-        cols.add(new ColDto("three", "URL", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
-        cols.add(new ColDto("d-one", "Query Params", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
-        cols.add(new ColDto("d-two", "Request Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
-        cols.add(new ColDto("d-three", "Response Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
-
-        Apidocs apidocs = Apidocs.builder().projectId(projectId).title(request.getTitle()).desc(request.getDesc()).rows(new ArrayList<>()).cols(cols).data(new HashMap<>()).build();
-
+    public void createApidocs(Apidocs apidocs) {
         mongoTemplate.insert(apidocs, APIDOCS);
     }
 
     @Override
     public void deleteApidocs(Long projectId) {
-        Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
-        DeleteResult deleteResult = mongoTemplate.remove(query, APIDOCS);
-        deleteResult.getDeletedCount() == 0
+        DeleteResult deleteResult = mongoTemplate.remove(BasicQuery.query(Criteria.where(PROJECT_ID).is(projectId)), APIDOCS);
+        if (deleteResult.getDeletedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
     }
 
     @Override
@@ -141,8 +126,6 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.pull(ROWS, rowId);
         update.unset(DATA + "." + rowId);
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
-
-        mongoTemplate.rem
 
         if (updateResult.getModifiedCount() == 0) return false;
         return true;

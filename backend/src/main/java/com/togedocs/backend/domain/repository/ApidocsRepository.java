@@ -2,13 +2,12 @@ package com.togedocs.backend.domain.repository;
 
 
 import com.togedocs.backend.api.dto.ApidocsRequest;
-import com.togedocs.backend.api.dto.ProjectRequest;
 import com.togedocs.backend.domain.entity.Apidocs;
 
 public interface ApidocsRepository {
     boolean existsByProjectId(Long projectId);
 
-    void createApidocs(ProjectRequest.CreateProjectRequest request, Long projectId);
+    void createApidocs(Apidocs apidocs);
 
     void deleteApidocs(Long projectId);
 

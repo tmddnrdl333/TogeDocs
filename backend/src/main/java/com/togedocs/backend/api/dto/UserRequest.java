@@ -1,13 +1,16 @@
 package com.togedocs.backend.api.dto;
 
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.Positive;
 
 public class UserRequest {
     @Getter
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
-    public static class ModifyUserRequest{
+    public static class ModifyUserRequest {
         @NotEmpty
         private String name;
         @Positive
@@ -16,7 +19,7 @@ public class UserRequest {
 
     @Getter
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
-    public static class UserInfoRequest{
+    public static class UserInfoRequest {
         // TODO : FE에서 Req를 바꿔야함.
         private String email;
         private String uuid;

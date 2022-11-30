@@ -1,58 +1,50 @@
 package com.togedocs.backend.api.service;
 
-import com.mongodb.client.result.DeleteResult;
 import com.togedocs.backend.api.dto.ProjectRequest;
 import com.togedocs.backend.api.dto.ProjectResponse;
 import com.togedocs.backend.api.dto.UserDto;
 import com.togedocs.backend.common.exception.BusinessException;
 import com.togedocs.backend.common.exception.ErrorCode;
 import com.togedocs.backend.domain.entity.*;
-import com.togedocs.backend.domain.repository.*;
+import com.togedocs.backend.domain.repository.ApidocsRepository;
+import com.togedocs.backend.domain.repository.ApilogsRepository;
+import com.togedocs.backend.domain.repository.ProjectRepository;
+import com.togedocs.backend.domain.repository.ProjectUserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
     private final UserService userService;
+    private final ApidocsService apidocsService;
+    private final ApilogsService apilogsService;
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
     private final ApidocsRepository apidocsRepository;
     private final ApilogsRepository apilogsRepository;
 
     public Project findById(Long projectId) throws BusinessException {
-        return projectRepository.findById(projectId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+        return projectRepository.findById(projectId).orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
     }
 
     public ProjectUser findProjectUser(Long projectId, Long userId) {
-        return projectUserRepository.findByProjectIdAndUserId(projectId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_USER_FORBIDDEN));
+        return projectUserRepository.findByProjectIdAndUserId(projectId, userId).orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_USER_FORBIDDEN));
     }
 
     public void createProject(ProjectRequest.CreateProjectRequest request, String loginUserProviderId) {
         String code = UUID.randomUUID().toString();
-        Project project = Project.builder()
-                .imgNo(request.getImgNo())
-                .code(code)
-                .build();
+        Project project = Project.builder().imgNo(request.getImgNo()).code(code).build();
         projectRepository.save(project);
-        apidocsRepository.createApidocs(request, project.getId());
-        apilogsRepository.createApilogs(project);
+        apidocsService.createApidocs(request, project.getId());
+        apilogsService.createApilogs(project.getId());
 
         User user = userService.findUserByUuid(loginUserProviderId);
-        ProjectUser projectUser = ProjectUser.builder()
-                .project(project)
-                .user(user)
-                .role(ProjectUserRole.ADMIN)
-                .build();
+        ProjectUser projectUser = ProjectUser.builder().project(project).user(user).role(ProjectUserRole.ADMIN).build();
         projectUserRepository.save(projectUser);
     }
 
@@ -68,8 +60,8 @@ public class ProjectService {
         projectUserRepository.deleteByProjectId(projectId);
         projectRepository.deleteById(projectId);
 
-        apidocsRepository.deleteApidocs(projectId);
-        apilogsRepository.deleteApilogs(projectId);
+        apidocsService.deleteApidocs(projectId);
+        apilogsService.deleteApilogs(projectId);
     }
 
     @Transactional
@@ -80,14 +72,9 @@ public class ProjectService {
     }
 
     public void joinProject(ProjectRequest.JoinProjectRequest request, String loginUserProviderId) {
-        Project project = projectRepository.findByCode(request.getCode())
-                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+        Project project = projectRepository.findByCode(request.getCode()).orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
         User user = userService.findUserByUuid(loginUserProviderId);
-        ProjectUser projectUser = ProjectUser.builder()
-                .project(project)
-                .user(user)
-                .role(ProjectUserRole.MEMBER)
-                .build();
+        ProjectUser projectUser = ProjectUser.builder().project(project).user(user).role(ProjectUserRole.MEMBER).build();
         projectUserRepository.save(projectUser);
     }
 
@@ -129,8 +116,7 @@ public class ProjectService {
     }
 
     public ProjectResponse.Project getProjectByCode(String code) throws BusinessException {
-        Project project = projectRepository.findByCode(code)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+        Project project = projectRepository.findByCode(code).orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
         List<String> names = projectUserRepository.getMemberNames(project.getId());
         Apidocs apidocs = apidocsRepository.getDocs(project.getId());
 
