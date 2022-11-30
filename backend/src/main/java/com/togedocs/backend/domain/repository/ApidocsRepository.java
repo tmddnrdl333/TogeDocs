@@ -3,6 +3,7 @@ package com.togedocs.backend.domain.repository;
 
 import com.togedocs.backend.api.dto.ApidocsRequest;
 import com.togedocs.backend.domain.entity.Apidocs;
+import com.togedocs.backend.domain.entity.ColDto;
 
 public interface ApidocsRepository {
     boolean existsByProjectId(Long projectId);
@@ -13,15 +14,15 @@ public interface ApidocsRepository {
 
     void addRow(Long projectId);
 
-    void addCol(Long projectId, ApidocsRequest.AddColRequest request);
+    void addCol(Long projectId, ColDto colDto);
 
-    boolean moveRow(Long projectId, ApidocsRequest.MoveItemRequest request);
+    void moveRow(Long projectId, ApidocsRequest.MoveItemRequest request);
 
-    boolean moveCol(Long projectId, ApidocsRequest.MoveItemRequest request);
+    void moveCol(Long projectId, ApidocsRequest.MoveItemRequest request);
 
-    boolean deleteRow(Long projectId, String rowId);
+    void deleteRow(Long projectId, String rowId);
 
-    boolean deleteCol(Long projectId, String colId);
+    void deleteCol(Long projectId, String colId);
 
     boolean updateCell(Long projectId, ApidocsRequest.UpdateCellRequest request);
 

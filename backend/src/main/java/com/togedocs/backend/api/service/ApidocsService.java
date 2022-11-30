@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class ApidocsService {
     private final ApidocsRepository apidocsRepository;
     private final String DEFAULT_TYPE = "text";
     private final int DEFAULT_WIDTH = 100;
+    private final ColCategory DEFAULT_CATEGORY = ColCategory.ADDED;
 
     private final List<ColDto> DEFAULT_COLS = new ArrayList<>() {
         {
@@ -48,47 +50,40 @@ public class ApidocsService {
     }
 
     public void addCol(Long projectId, ApidocsRequest.AddColRequest request) {
-        apidocsRepository.addCol(projectId, request);
+        String colId = UUID.randomUUID().toString();
+        ColDto colDto = ColDto.build(colId, request.getName(), request.getType(), DEFAULT_WIDTH, DEFAULT_CATEGORY);
+        apidocsRepository.addCol(projectId, colDto);
     }
 
     public void moveRow(Long projectId, ApidocsRequest.MoveItemRequest request) {
         if (!apidocsRepository.existsByProjectId(projectId)) {
             throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
         }
-        boolean result = apidocsRepository.moveRow(projectId, request);
-        if (!result) {
-            throw new BusinessException(ErrorCode.ROW_NOT_FOUND);
-        }
+        apidocsRepository.moveRow(projectId, request);
     }
 
     public void moveCol(Long projectId, ApidocsRequest.MoveItemRequest request) {
         if (!apidocsRepository.existsByProjectId(projectId)) {
             throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
         }
-        boolean result = apidocsRepository.moveCol(projectId, request);
-        if (!result) {
-            throw new BusinessException(ErrorCode.COL_NOT_FOUND);
-        }
+        apidocsRepository.moveCol(projectId, request);
     }
 
     public void deleteRow(Long projectId, String rowId) {
         if (!apidocsRepository.existsByProjectId(projectId)) {
             throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
         }
-        boolean result = apidocsRepository.deleteRow(projectId, rowId);
-        if (!result) {
-            throw new BusinessException(ErrorCode.ROW_NOT_FOUND);
-        }
+        apidocsRepository.deleteRow(projectId, rowId);
     }
 
     public void deleteCol(Long projectId, String colId) {
         if (!apidocsRepository.existsByProjectId(projectId)) {
             throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
         }
-        boolean result = apidocsRepository.deleteCol(projectId, colId);
-        if (!result) {
-            throw new BusinessException(ErrorCode.COL_NOT_FOUND);
+        if (colId.equals("one") || colId.equals("two") || colId.equals("three") || colId.equals("d-one") || colId.equals("d-two") || colId.equals("d-three")) {
+            throw new BusinessException(ErrorCode.DELETE_COL_FORBIDDEN);
         }
+        apidocsRepository.deleteCol(projectId, colId);
     }
 
     public void updateCell(Long projectId, ApidocsRequest.UpdateCellRequest request) {

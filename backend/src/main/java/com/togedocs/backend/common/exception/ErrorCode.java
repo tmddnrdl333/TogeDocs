@@ -18,6 +18,7 @@ public enum ErrorCode {
     // 403 FORBIDDEN
     USER_NOT_ADMIN(FORBIDDEN, "권한이 없습니다."),
     PROJECT_USER_FORBIDDEN(FORBIDDEN, "프로젝트 접근 권한이 없습니다."),
+    DELETE_COL_FORBIDDEN(FORBIDDEN,"삭제할 수 없는 열입니다."),
 
 
     // 404 NOT_FOUND

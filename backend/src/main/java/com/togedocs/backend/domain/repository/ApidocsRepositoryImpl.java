@@ -6,7 +6,6 @@ import com.togedocs.backend.api.dto.ApidocsRequest;
 import com.togedocs.backend.common.exception.BusinessException;
 import com.togedocs.backend.common.exception.ErrorCode;
 import com.togedocs.backend.domain.entity.Apidocs;
-import com.togedocs.backend.domain.entity.ColCategory;
 import com.togedocs.backend.domain.entity.ColDto;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
@@ -31,7 +30,6 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
     private final String COLS = "cols";
     private final String DATA = "data";
     private final int DEFAULT_WIDTH = 100;
-    private final ColCategory DEFAULT_CATEGORY = ColCategory.ADDED;
 
     public boolean existsByProjectId(Long projectId) {
         return mongoTemplate.exists(BasicQuery.query(Criteria.where(PROJECT_ID).is(projectId)), APIDOCS);
@@ -44,7 +42,9 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
 
     @Override
     public void deleteApidocs(Long projectId) {
-        DeleteResult deleteResult = mongoTemplate.remove(BasicQuery.query(Criteria.where(PROJECT_ID).is(projectId)), APIDOCS);
+        Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
+        DeleteResult deleteResult = mongoTemplate.remove(query, APIDOCS);
+
         if (deleteResult.getDeletedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
     }
 
@@ -62,93 +62,83 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
 
 
     @Override
-    public void addCol(Long projectId, ApidocsRequest.AddColRequest request) {
+    public void addCol(Long projectId, ColDto colDto) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Update update = new Update();
-        String colId = UUID.randomUUID().toString();
-        ColDto col = ColDto.build(colId, request.getName(), request.getType(), DEFAULT_WIDTH, DEFAULT_CATEGORY);
-        update.push(COLS).atPosition(-3).value(col);
+        update.push(COLS).atPosition(-3).value(colDto);
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
         if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
     }
 
+    // PROJECT_NOT_FOUND(service) > ROW_NOT_FOUND > UNEXPECTED_ERROR
     @Override
-    public boolean moveRow(Long projectId, ApidocsRequest.MoveItemRequest request) {
-
+    public void moveRow(Long projectId, ApidocsRequest.MoveItemRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Update update = new Update();
         update.pull(ROWS, request.getFromId());
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        if (updateResult.getModifiedCount() == 0) return false;
+        // PROJECT_NOT_FOUND catched in service already
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.ROW_NOT_FOUND);
 
         update = new Update();
         update.push(ROWS).atPosition(request.getToIndex()).value(request.getFromId());
-        mongoTemplate.updateFirst(query, update, APIDOCS);
+        updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        return true;
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.UNEXPECTED_ERROR);
     }
 
     @Override
-    public boolean moveCol(Long projectId, ApidocsRequest.MoveItemRequest request) {
-
+    public void moveCol(Long projectId, ApidocsRequest.MoveItemRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class);
         Update update = new Update();
-        // col을 배열에서 제거
         update.pull(COLS, Query.query(Criteria.where("uuid").is(request.getFromId())));
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        // 여기에 colid 못찾는 exception 처리
-        if (updateResult.getModifiedCount() == 0) return false;
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.COL_NOT_FOUND);
 
         List<ColDto> colDtos = apidocs.getCols();
         ColDto targetCol = new ColDto();
         for (ColDto colDto : colDtos) {
             if (colDto.getUuid().equals(request.getFromId())) {
                 targetCol = colDto;
+                break;
             }
         }
-        update = new Update();
-        // col을 배열의 특정 위치에 추가
-        update.push(COLS).atPosition(request.getToIndex()).value(targetCol);
-        mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        return true;
+        if (targetCol == null) throw new BusinessException(ErrorCode.COL_NOT_FOUND);
+
+        update = new Update();
+        update.push(COLS).atPosition(request.getToIndex()).value(targetCol);
+        updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
+
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.UNEXPECTED_ERROR);
     }
 
     @Override
-    public boolean deleteRow(Long projectId, String rowId) {
-
+    public void deleteRow(Long projectId, String rowId) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Update update = new Update();
         update.pull(ROWS, rowId);
         update.unset(DATA + "." + rowId);
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        if (updateResult.getModifiedCount() == 0) return false;
-        return true;
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.ROW_NOT_FOUND);
     }
 
     @Override
-    public boolean deleteCol(Long projectId, String colId) {
-
-//        if(colId.equals("one")||colId.equals("two"))
+    public void deleteCol(Long projectId, String colId) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
-        // TODO: field로 가져와서 하는 걸로 다시 짜보자
         query.fields().include(ROWS).include(COLS);
         Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class, APIDOCS);
         List<String> rows = apidocs.getRows();
-        List<ColDto> cols = apidocs.getCols();
-        if (projectId == 54) return false;
-
 
         Update update = new Update();
         // #1. cols에서 uuid가 colId인 colDto 제거
         update.pull(COLS, Query.query(Criteria.where("uuid").is(colId)));
         // rows 배열 조회
-//        List<String> rows = mongoTemplate.findDistinct(query, ROWS, APIDOCS, String.class);
         for (String rowId : rows) {
             // #2. rows 배열의 rowId를 순회하며 colId쌍 제거
             // TODO: updateMulti를 쓰면 될까??
@@ -157,8 +147,7 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         // #1, #2 실행
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        if (updateResult.getModifiedCount() == 0) return false;
-        return true;
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.UNEXPECTED_ERROR);
     }
 
     @Override
