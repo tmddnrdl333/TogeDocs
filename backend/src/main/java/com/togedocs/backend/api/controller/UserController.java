@@ -5,10 +5,13 @@ import com.togedocs.backend.api.dto.UserRequest;
 import com.togedocs.backend.api.dto.UserResponse;
 import com.togedocs.backend.api.service.UserService;
 import com.togedocs.backend.common.exception.BusinessException;
+import com.togedocs.backend.common.exception.ErrorCode;
 import com.togedocs.backend.common.security.config.jwt.TokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import javax.transaction.Transactional;
 import java.security.Principal;
 import java.util.List;
@@ -21,55 +24,36 @@ public class UserController {
 
     private final UserService userService;
     private final TokenService tokenService;
+
     @Transactional
     @PatchMapping("/user/info")
-    public ResponseEntity<?> modifyUser(@RequestBody UserRequest.ModifyUserRequest userRequest, Principal principal) {
-        UserResponse.Id response;
+    public ResponseEntity<String> updateUserInfo(@RequestBody UserRequest.ModifyUserRequest userRequest, Principal principal) {
         String providerId = principal.getName();
-        try {
-            response = userService.modifyUser(userRequest, providerId);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Unexpected exception");
-        }
-        return ResponseEntity.status(200).body(response);
+        userService.updateUserInfo(providerId, userRequest);
+        return ResponseEntity.status(HttpStatus.OK).body("성공적으로 프로필을 수정했습니다!");
     }
 
-    @GetMapping("/user/info/{userId}")
-    public ResponseEntity<?> getUserNameAndImgNo(@PathVariable Long userId) {
-        UserResponse.userNameAndImgNo response;
-        try {
-            response = userService.getUserNameAndImgNo(userId);
-        } catch (BusinessException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Unexpected exception");
-        }
-        return ResponseEntity.status(200).body(response);
+    @GetMapping("/user/info/{providerId}")
+    public ResponseEntity<UserResponse.UserInfo> getUserInfo(@PathVariable String providerId) {
+        UserResponse.UserInfo response = userService.getUserInfo(providerId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @GetMapping("/user/project")
-    public ResponseEntity<?> getProjectInfo(Principal principal) {
-        List<UserResponse.Info> response;
+    public ResponseEntity<List<UserResponse.ProjectInfo>> getProjectList(Principal principal) {
         String providerId = principal.getName();
-        try {
-            response = userService.getUserInfo(providerId);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Unexpected exception");
-        }
-        return ResponseEntity.status(200).body(response);
+        List<UserResponse.ProjectInfo> response = userService.getProjectList(providerId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> getAccessToken(@RequestBody UserRequest.UserInfoRequest userRequest){
+    public ResponseEntity<?> getAccessToken(@RequestBody UserRequest.UserInfoRequest userRequest) {
         Token response;
         try {
-            response=tokenService.generateToken(userRequest.getUserId(),userRequest.getName(),userRequest.getImgNo(),userRequest.getEmail());
+            response = tokenService.generateToken( userRequest.getEmail(), userRequest.getUuid(), userRequest.getName(), userRequest.getImgNo());
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(401).body("Unauthorization Token");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorCode.LOGIN_FAILURE);
         }
         return ResponseEntity.status(200).body(response.getToken());
     }

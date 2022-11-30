@@ -5,69 +5,53 @@ import com.togedocs.backend.api.dto.UserResponse;
 import com.togedocs.backend.common.exception.BusinessException;
 import com.togedocs.backend.common.exception.ErrorCode;
 import com.togedocs.backend.domain.entity.Apidocs;
+import com.togedocs.backend.domain.entity.ProjectUserRole;
 import com.togedocs.backend.domain.entity.User;
+import com.togedocs.backend.domain.repository.ApidocsRepository;
 import com.togedocs.backend.domain.repository.ProjectUserRepository;
 import com.togedocs.backend.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
-
     private final UserRepository userRepository;
-    private final ProjectUserRepository projectUserRepository;
-    private final MongoTemplate mongoTemplate;
+    private final ApidocsRepository apidocsRepository;
 
-    public UserResponse.Id modifyUser(UserRequest.ModifyUserRequest userRequest, String providerId) {
-        User userEntity = userRepository.findByProviderId(providerId);
-
-        long num = userRepository.updateByUserInfo(userEntity, userRequest);
-
-        return UserResponse.Id.builder().id((int) num).build();
+    public User findUserByUuid(String uuid) {
+        return userRepository.findByUuid(uuid)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
-    public UserResponse.userNameAndImgNo getUserNameAndImgNo(Long userId) throws BusinessException {
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null)
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        return UserResponse.userNameAndImgNo.build(user.getName(), user.getImgNo());
-    }
-
-    public List<UserResponse.Info> getUserInfo(String providerId) {
-        User userEntity = userRepository.findByProviderId(providerId);
-//        Query query = new Query().addCriteria(Criteria.where("projectId").is(projectId));
-        //user가 참여하고있는 프로젝트 id
-        List<Long> projectIds = userRepository.getProjectId(userEntity.getId());
-
-        List<UserResponse.Info> list = new ArrayList<>();
-        for (Long projectId : projectIds) {
-            //자신의 이름
-            String myname = userEntity.getName();
-            //프로젝트 권한
-            String role = projectUserRepository.getMyRole(userEntity.getId(), projectId);
-            //이름, imgNo
-            List<String> names = userRepository.getNames(projectId, userEntity.getId());
-            int imgNos = userRepository.getImgNo(projectId);
-            //title
-            Query query = new Query().addCriteria(Criteria.where("projectId").is(projectId));
-            Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class, "apidocs");
-            String title = apidocs.getTitle();
-            //desc
-            String desc = apidocs.getDesc();
-            //Info 정보 넣기
-            list.add(UserResponse.Info.build(myname, role, projectId, title, desc, names, imgNos));
-//            return UserResponse.Info.build(projectId,names,imgNos);
+    public void updateUserInfo(String uuid, UserRequest.ModifyUserRequest userRequest) {
+        User user = findUserByUuid(uuid);
+        boolean result = userRepository.updateUserInfo(user.getId(), userRequest);
+        if (!result) {
+            throw new BusinessException(ErrorCode.USER_INFO_UPDATE_BAD_REQUEST);
         }
+    }
 
-//        return UserResponse.Info.build(userInfo,projectInfo);
-        return list;
+    public UserResponse.UserInfo getUserInfo(String uuid) throws BusinessException {
+        User user = findUserByUuid(uuid);
+        return UserResponse.UserInfo.build(user);
+    }
 
+    // TODO Exception?
+    public List<UserResponse.ProjectInfo> getProjectList(String uuid) {
+        User user = findUserByUuid(uuid);
+        List<UserResponse.ProjectInfo> projectList = userRepository.getProjectList(user.getId());
+
+        Apidocs apidocs = null;
+        for (UserResponse.ProjectInfo project : projectList) {
+            apidocs = apidocsRepository.getDocs(project.getProjectId());
+            project.setTitle(apidocs.getTitle());
+            project.setDesc(apidocs.getDesc());
+        }
+        return projectList;
     }
 
 
