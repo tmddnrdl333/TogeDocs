@@ -24,19 +24,15 @@ public class ApidocsService {
     private final String DEFAULT_TYPE = "text";
     private final int DEFAULT_WIDTH = 100;
 
-    private final List<ColDto> DEFAULT_COLS = new ArrayList<>() {
-        {
-            add(new ColDto("one", "Name", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
-            add(new ColDto("two", "Method", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
-            add(new ColDto("three", "URL", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
-            add(new ColDto("d-one", "Query Params", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
-            add(new ColDto("d-two", "Request Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
-            add(new ColDto("d-three", "Response Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
-        }
-    };
-
     public void createApidocs(ProjectRequest.CreateProjectRequest request, Long projectId) {
-        Apidocs apidocs = Apidocs.builder().projectId(projectId).title(request.getTitle()).desc(request.getDesc()).rows(new ArrayList<>()).cols(DEFAULT_COLS).data(new HashMap<>()).build();
+        List<ColDto> defaultCols = new ArrayList<>();
+        defaultCols.add(new ColDto("one", "Name", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
+        defaultCols.add(new ColDto("two", "Method", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
+        defaultCols.add(new ColDto("three", "URL", DEFAULT_TYPE, DEFAULT_WIDTH, ColCategory.REQUIRED));
+        defaultCols.add(new ColDto("d-one", "Query Params", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
+        defaultCols.add(new ColDto("d-two", "Request Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
+        defaultCols.add(new ColDto("d-three", "Response Body", DEFAULT_TYPE, 1, ColCategory.PAYLOAD));
+        Apidocs apidocs = Apidocs.builder().projectId(projectId).title(request.getTitle()).desc(request.getDesc()).rows(new ArrayList<>()).cols(defaultCols).data(new HashMap<>()).build();
         apidocsRepository.createApidocs(apidocs);
     }
 

@@ -10,7 +10,6 @@ import com.togedocs.backend.domain.entity.ColDto;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.BasicQuery;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -88,6 +87,9 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
     public void moveCol(Long projectId, ApidocsRequest.MoveItemRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class);
+
+        if (apidocs == null) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
+
         Update update = new Update();
         update.pull(COLS, Query.query(Criteria.where("uuid").is(request.getFromId())));
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
@@ -104,7 +106,7 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
             }
         }
 
-        if (targetCol == null) throw new BusinessException(ErrorCode.COL_NOT_FOUND);
+        if (targetCol.getUuid().equals(request.getFromId())) throw new BusinessException(ErrorCode.COL_NOT_FOUND);
 
         update = new Update();
         update.push(COLS).atPosition(request.getToIndex()).value(targetCol);
