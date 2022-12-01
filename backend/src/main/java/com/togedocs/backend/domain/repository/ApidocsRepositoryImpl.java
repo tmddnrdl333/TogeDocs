@@ -71,7 +71,6 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
     }
 
-    // PROJECT_NOT_FOUND(service) > ROW_NOT_FOUND > UNEXPECTED_ERROR
     @Override
     public void moveRow(Long projectId, ApidocsRequest.MoveItemRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
@@ -79,7 +78,7 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.pull(ROWS, request.getFromId());
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        // PROJECT_NOT_FOUND catched in service already
+        if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
         if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.ROW_NOT_FOUND);
 
         update = new Update();
@@ -97,12 +96,13 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.pull(COLS, Query.query(Criteria.where("uuid").is(request.getFromId())));
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
+        if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
         if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.COL_NOT_FOUND);
 
         List<ColDto> colDtos = apidocs.getCols();
         ColDto targetCol = new ColDto();
         for (ColDto colDto : colDtos) {
-            if (colDto.getUuid().equals(request.getFromId())) {
+            if (request.getFromId().equals(colDto.getUuid())) {
                 targetCol = colDto;
                 break;
             }
@@ -125,6 +125,7 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.unset(DATA + "." + rowId);
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
+        if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
         if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.ROW_NOT_FOUND);
     }
 
@@ -133,61 +134,58 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         query.fields().include(ROWS).include(COLS);
         Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class, APIDOCS);
-        List<String> rows = apidocs.getRows();
 
+        if (apidocs == null) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
+
+        List<String> rows = apidocs.getRows();
         Update update = new Update();
-        // #1. cols에서 uuid가 colId인 colDto 제거
         update.pull(COLS, Query.query(Criteria.where("uuid").is(colId)));
-        // rows 배열 조회
         for (String rowId : rows) {
-            // #2. rows 배열의 rowId를 순회하며 colId쌍 제거
-            // TODO: updateMulti를 쓰면 될까??
             update.unset(DATA + "." + rowId + "." + colId);
         }
-        // #1, #2 실행
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
         if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.UNEXPECTED_ERROR);
     }
 
     @Override
-    public boolean updateCell(Long projectId, ApidocsRequest.UpdateCellRequest request) {
-
+    public void updateCell(Long projectId, ApidocsRequest.UpdateCellRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
-
         Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class);
+
+        if (apidocs == null) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
+
         List<String> rowIds = apidocs.getRows();
-        boolean exceptionFlag = true;
-        for (String rowId : rowIds) {
-            if (rowId.equals(request.getRowId())) exceptionFlag = false;
-        }
-        if (exceptionFlag) return false;
+        if (!rowIds.contains(request.getRowId())) throw new BusinessException(ErrorCode.CELL_NOT_FOUND);
+
         List<ColDto> colDtos = apidocs.getCols();
-        exceptionFlag = true;
+        boolean cellException = true;
         for (ColDto colDto : colDtos) {
-            if (colDto.getUuid().equals(request.getColId())) exceptionFlag = false;
+            if (request.getColId().equals(colDto.getUuid())) {
+                cellException = false;
+            }
         }
-        if (exceptionFlag) return false;
+        if (cellException) throw new BusinessException(ErrorCode.CELL_NOT_FOUND);
 
         Update update = new Update();
         update.set(DATA + "." + request.getRowId() + "." + request.getColId(), request.getContent());
-        mongoTemplate.updateFirst(query, update, APIDOCS);
+        UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        return true;
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.UNEXPECTED_ERROR);
     }
 
     @Override
     public Apidocs getDocs(Long projectId) {
-
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Apidocs apidocs = mongoTemplate.findOne(query, Apidocs.class, APIDOCS);
+
+        if (apidocs == null) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
 
         return apidocs;
     }
 
     @Override
-    public boolean updateProjectInfo(Long projectId, ApidocsRequest.UpdateProjectInfoRequest request) {
-
+    public void updateProjectInfo(Long projectId, ApidocsRequest.UpdateProjectInfoRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Update update = new Update();
         update.set("title", request.getTitle());
@@ -195,40 +193,38 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
         update.set("baseUrl", request.getBaseUrl());
         UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        if (updateResult.getMatchedCount() == 0) return false;
-        return true;
+        if (updateResult.getMatchedCount() == 0) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.UNEXPECTED_ERROR);
     }
 
     @Override
-    public boolean updateCol(Long projectId, String colId, ApidocsRequest.UpdateColRequest request) {
-
+    public void updateCol(Long projectId, String colId, ApidocsRequest.UpdateColRequest request) {
         Query query = new Query().addCriteria(Criteria.where(PROJECT_ID).is(projectId));
         Update update = new Update();
         update.pull(COLS, Query.query(Criteria.where("uuid").is(colId)));
         Apidocs apidocs = mongoTemplate.findAndModify(query, update, Apidocs.class);
 
-        if (apidocs == null)
-            return false; // pjt not found exception, but already checked in service before this method is called
+        if (apidocs == null) throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
 
-        boolean exceptionFlag = true;
+        boolean colException = true;
         List<ColDto> colDtos = apidocs.getCols();
         for (ColDto colDto : colDtos) {
-            if (colDto.getUuid().equals(colId)) exceptionFlag = false;
+            if (colId.equals(colDto.getUuid())) colException = false;
         }
-        if (exceptionFlag) return false; // col not found exception
+        if (colException) throw new BusinessException(ErrorCode.COL_NOT_FOUND);
 
         int size = colDtos.size();
         int targetIndex = 0;
         for (int i = 0; i < size; i++) {
-            if (colDtos.get(i).getUuid().equals(colId)) {
+            if (colId.equals(colDtos.get(i).getUuid())) {
                 targetIndex = i;
             }
         }
         ColDto updatedCol = ColDto.build(colId, request.getName(), request.getType(), request.getWidth(), colDtos.get(targetIndex).getCategory());
         update = new Update();
         update.push(COLS).atPosition(targetIndex).value(updatedCol);
-        mongoTemplate.updateFirst(query, update, APIDOCS);
+        UpdateResult updateResult = mongoTemplate.updateFirst(query, update, APIDOCS);
 
-        return true;
+        if (updateResult.getModifiedCount() == 0) throw new BusinessException(ErrorCode.UNEXPECTED_ERROR);
     }
 }

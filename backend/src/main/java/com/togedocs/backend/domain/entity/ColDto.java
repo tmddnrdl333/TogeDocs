@@ -1,8 +1,9 @@
 package com.togedocs.backend.domain.entity;
 
-import lombok.*;
-
-import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 // TODO 어노테이션 수정해야함.
 @Builder
@@ -16,13 +17,7 @@ public class ColDto {
     private int width;
     private ColCategory category;
 
-    public static ColDto build(String uuid, String name, String type, int width, ColCategory category){
-        return ColDto.builder()
-                .uuid(uuid)
-                .name(name)
-                .type(type)
-                .width(width)
-                .category(category)
-                .build();
+    public static ColDto build(String uuid, String name, String type, int width, ColCategory category) {
+        return ColDto.builder().uuid(uuid).name(name).type(type).width(width).category(category).build();
     }
 }

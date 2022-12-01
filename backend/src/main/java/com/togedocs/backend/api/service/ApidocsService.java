@@ -23,7 +23,6 @@ public class ApidocsService {
     private final ApidocsRepository apidocsRepository;
     private final String DEFAULT_TYPE = "text";
     private final int DEFAULT_WIDTH = 100;
-    private final ColCategory DEFAULT_CATEGORY = ColCategory.ADDED;
 
     private final List<ColDto> DEFAULT_COLS = new ArrayList<>() {
         {
@@ -51,35 +50,23 @@ public class ApidocsService {
 
     public void addCol(Long projectId, ApidocsRequest.AddColRequest request) {
         String colId = UUID.randomUUID().toString();
-        ColDto colDto = ColDto.build(colId, request.getName(), request.getType(), DEFAULT_WIDTH, DEFAULT_CATEGORY);
+        ColDto colDto = ColDto.build(colId, request.getName(), request.getType(), DEFAULT_WIDTH, ColCategory.ADDED);
         apidocsRepository.addCol(projectId, colDto);
     }
 
     public void moveRow(Long projectId, ApidocsRequest.MoveItemRequest request) {
-        if (!apidocsRepository.existsByProjectId(projectId)) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
         apidocsRepository.moveRow(projectId, request);
     }
 
     public void moveCol(Long projectId, ApidocsRequest.MoveItemRequest request) {
-        if (!apidocsRepository.existsByProjectId(projectId)) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
         apidocsRepository.moveCol(projectId, request);
     }
 
     public void deleteRow(Long projectId, String rowId) {
-        if (!apidocsRepository.existsByProjectId(projectId)) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
         apidocsRepository.deleteRow(projectId, rowId);
     }
 
     public void deleteCol(Long projectId, String colId) {
-        if (!apidocsRepository.existsByProjectId(projectId)) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
         if (colId.equals("one") || colId.equals("two") || colId.equals("three") || colId.equals("d-one") || colId.equals("d-two") || colId.equals("d-three")) {
             throw new BusinessException(ErrorCode.DELETE_COL_FORBIDDEN);
         }
@@ -87,38 +74,20 @@ public class ApidocsService {
     }
 
     public void updateCell(Long projectId, ApidocsRequest.UpdateCellRequest request) {
-        if (!apidocsRepository.existsByProjectId(projectId)) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
-        boolean result = apidocsRepository.updateCell(projectId, request);
-        if (!result) {
-            throw new BusinessException(ErrorCode.CELL_NOT_FOUND);
-        }
+        apidocsRepository.updateCell(projectId, request);
     }
 
     public ApidocsResponse.Apidocs getDocs(Long projectId) {
         Apidocs apidocs = apidocsRepository.getDocs(projectId);
-        if (apidocs == null) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
         return ApidocsResponse.Apidocs.build(apidocs);
     }
 
     public void updateProjectInfo(Long projectId, ApidocsRequest.UpdateProjectInfoRequest request) {
-        boolean result = apidocsRepository.updateProjectInfo(projectId, request);
-        if (!result) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
+        apidocsRepository.updateProjectInfo(projectId, request);
     }
 
     public void updateCol(Long projectId, String colId, ApidocsRequest.UpdateColRequest request) {
-        if (!apidocsRepository.existsByProjectId(projectId)) {
-            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
-        }
-        boolean result = apidocsRepository.updateCol(projectId, colId, request);
-        if (!result) {
-            throw new BusinessException(ErrorCode.COL_NOT_FOUND);
-        }
+        apidocsRepository.updateCol(projectId, colId, request);
     }
 
 }

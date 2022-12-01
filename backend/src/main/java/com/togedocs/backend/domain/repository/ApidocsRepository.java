@@ -24,11 +24,11 @@ public interface ApidocsRepository {
 
     void deleteCol(Long projectId, String colId);
 
-    boolean updateCell(Long projectId, ApidocsRequest.UpdateCellRequest request);
+    void updateCell(Long projectId, ApidocsRequest.UpdateCellRequest request);
 
     Apidocs getDocs(Long projectId);
 
-    boolean updateProjectInfo(Long projectId, ApidocsRequest.UpdateProjectInfoRequest request);
+    void updateProjectInfo(Long projectId, ApidocsRequest.UpdateProjectInfoRequest request);
 
-    boolean updateCol(Long projectId, String colId, ApidocsRequest.UpdateColRequest request);
+    void updateCol(Long projectId, String colId, ApidocsRequest.UpdateColRequest request);
 }
