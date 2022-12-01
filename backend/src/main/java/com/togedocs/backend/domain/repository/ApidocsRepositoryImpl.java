@@ -31,10 +31,6 @@ public class ApidocsRepositoryImpl implements ApidocsRepository {
     private final String DATA = "data";
     private final int DEFAULT_WIDTH = 100;
 
-    public boolean existsByProjectId(Long projectId) {
-        return mongoTemplate.exists(BasicQuery.query(Criteria.where(PROJECT_ID).is(projectId)), APIDOCS);
-    }
-
     @Override
     public void createApidocs(Apidocs apidocs) {
         mongoTemplate.insert(apidocs, APIDOCS);

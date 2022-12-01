@@ -7,7 +7,6 @@ import com.togedocs.backend.common.exception.BusinessException;
 import com.togedocs.backend.common.exception.ErrorCode;
 import com.togedocs.backend.domain.entity.*;
 import com.togedocs.backend.domain.repository.ApidocsRepository;
-import com.togedocs.backend.domain.repository.ApilogsRepository;
 import com.togedocs.backend.domain.repository.ProjectRepository;
 import com.togedocs.backend.domain.repository.ProjectUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,6 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
     private final ApidocsRepository apidocsRepository;
-    private final ApilogsRepository apilogsRepository;
 
     public Project findById(Long projectId) throws BusinessException {
         return projectRepository.findById(projectId).orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));

@@ -6,7 +6,6 @@ import com.togedocs.backend.domain.entity.Apidocs;
 import com.togedocs.backend.domain.entity.ColDto;
 
 public interface ApidocsRepository {
-    boolean existsByProjectId(Long projectId);
 
     void createApidocs(Apidocs apidocs);
 
